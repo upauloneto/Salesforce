@@ -1,0 +1,53 @@
+<aura:component description="Estudo" controller="StreamingAPIController" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global">
+
+	<aura:handler event="c:StreamingAPIEvent" action="{!c.handleShowNotificationEvent}"/>
+
+	<audio src="{!$Resource.Notifcation}" id="noty">
+    </audio>
+
+    <ltng:require scripts="{!$Resource.full}"
+                  afterScriptsLoaded="{!c.init}"/>
+
+    <aura:attribute name="acc" type="Account[]"/>
+
+    <aura:handler event="aura:waiting" action="{!c.jsFunction}"/>
+
+    <aura:if isTrue="{!v.Spinner}">
+	    <div aura:id="spinnerId" class="slds-spinner_container">
+	       <div class="slds-spinner--brand  slds-spinner slds-spinner--large slds-is-relative" role="alert">
+	         <span class="slds-assistive-text">Loading</span>
+	         <div class="slds-spinner__dot-a"></div>
+	         <div class="slds-spinner__dot-b"></div>
+	       </div>
+	    </div>
+	</aura:if>
+
+    <div id="apiMessages">
+      <div class="slds-page-header" id="main">
+      	<aura:iteration var="conta" items="{!v.acc}" >
+	    	<div class="slds-media">
+		        <div class="slds-media__figure">
+		          <span class="slds-icon_container slds-icon-action-call slds-icon_container--circle">
+		          	<lightning:icon iconName="action:call" size="small" />
+		          </span>
+		        </div>
+		        <div class="slds-media__body"> 
+		          <h1 class="slds-page-header__title slds-truncate slds-align-middle" title="Rohde Corp - 80,000 Widgets">{!conta.Name}</h1>
+		          <p class="slds-text-body_small slds-line-height_reset">{!conta.Phone}</p>
+		        </div>
+
+		        <button onclick="{!c.goto}" lang="{!conta.Id}" class="slds-button slds-button--icon uiButton">
+				   <div class="tooltip-trigger uiTooltip" lang="{!conta.Id}">
+				      <lightning:icon iconName="action:preview" size="xx-small" lang="{!conta.Id}"/>
+				   </div>
+				</button>
+
+		    </div>
+	    </aura:iteration>
+      </div>
+	</div>
+
+	
+
+
+</aura:component>
