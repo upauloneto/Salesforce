@@ -1,0 +1,504 @@
+<apex:page showHeader="false" sidebar="false" docType="HTML-5.0" applyHtmlTag="false" applyBodyTag="false" standardStylesheets="false">
+   <html>
+      <head>
+         <title>Moldsoft - Google API</title>
+         <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+         <meta charset="utf-8"/>
+         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css"/>
+         <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+         <script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+          <apex:remoteObjects jsNamespace="RemoteObjectModel">
+              <apex:remoteObjectModel name="Lead" jsShorthand="Place" fields="Id,Street,City,State,Country,PostalCode,Phone,LastName,Website,Google_place_id__c"/>
+          </apex:remoteObjects>
+         <style>
+            #map {
+            height: 100%;
+            z-index: 996 !important;
+            }
+            html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            z-index: 1;
+            }
+            .logo{
+            position: absolute;
+            right: 60px;
+            width: 180px;
+            bottom: 20px;
+            z-index: 999;
+            }
+            #sidenav-overlay{
+            z-index: 0 !important;
+            }
+            .hiddendiv{
+            z-index: 0 !important;
+            }
+            .drag-target{
+            z-index: 0 !important;
+            }
+            .absolute{
+            z-index: 998;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            }
+            #autocomplete-input{
+            color: white;
+            }
+            input.valid:not([type]), input.valid:not([type]):focus, input[type=text].valid:not(.browser-default), input[type=text].valid:not(.browser-default):focus, input[type=password].valid:not(.browser-default), input[type=password].valid:not(.browser-default):focus, input[type=email].valid:not(.browser-default), input[type=email].valid:not(.browser-default):focus, input[type=url].valid:not(.browser-default), input[type=url].valid:not(.browser-default):focus, input[type=time].valid:not(.browser-default), input[type=time].valid:not(.browser-default):focus, input[type=date].valid:not(.browser-default), input[type=date].valid:not(.browser-default):focus, input[type=datetime].valid:not(.browser-default), input[type=datetime].valid:not(.browser-default):focus, input[type=datetime-local].valid:not(.browser-default), input[type=datetime-local].valid:not(.browser-default):focus, input[type=tel].valid:not(.browser-default), input[type=tel].valid:not(.browser-default):focus, input[type=number].valid:not(.browser-default), input[type=number].valid:not(.browser-default):focus, input[type=search].valid:not(.browser-default), input[type=search].valid:not(.browser-default):focus, textarea.materialize-textarea.valid, textarea.materialize-textarea.valid:focus, .select-wrapper.valid>input.select-dropdown {
+            border-bottom: 1px solid #fff;
+            -webkit-box-shadow: 0 1px 0 0 #fff;
+            box-shadow: 0 1px 0 0 #fff;
+            }
+            input:not([type]):focus:not([readonly]), input[type=text]:not(.browser-default):focus:not([readonly]), input[type=password]:not(.browser-default):focus:not([readonly]), input[type=email]:not(.browser-default):focus:not([readonly]), input[type=url]:not(.browser-default):focus:not([readonly]), input[type=time]:not(.browser-default):focus:not([readonly]), input[type=date]:not(.browser-default):focus:not([readonly]), input[type=datetime]:not(.browser-default):focus:not([readonly]), input[type=datetime-local]:not(.browser-default):focus:not([readonly]), input[type=tel]:not(.browser-default):focus:not([readonly]), input[type=number]:not(.browser-default):focus:not([readonly]), input[type=search]:not(.browser-default):focus:not([readonly]), textarea.materialize-textarea:focus:not([readonly]) {
+            border-bottom: 1px solid #fff;
+            -webkit-box-shadow: 0 1px 0 0 #fff;
+            box-shadow: 0 1px 0 0 #fff;
+            }
+            input:not([type]):focus:not([readonly])+label, input[type=text]:not(.browser-default):focus:not([readonly])+label, input[type=password]:not(.browser-default):focus:not([readonly])+label, input[type=email]:not(.browser-default):focus:not([readonly])+label, input[type=url]:not(.browser-default):focus:not([readonly])+label, input[type=time]:not(.browser-default):focus:not([readonly])+label, input[type=date]:not(.browser-default):focus:not([readonly])+label, input[type=datetime]:not(.browser-default):focus:not([readonly])+label, input[type=datetime-local]:not(.browser-default):focus:not([readonly])+label, input[type=tel]:not(.browser-default):focus:not([readonly])+label, input[type=number]:not(.browser-default):focus:not([readonly])+label, input[type=search]:not(.browser-default):focus:not([readonly])+label, textarea.materialize-textarea:focus:not([readonly])+label {
+            color: #fff;
+            }
+            .input-field label {
+            color: #fff;
+            }
+            #preloader {
+            position:fixed;
+            left: 0px;
+            top: 0px;
+            width: 100%;
+            height: 100%;   
+            background-color: rgba(196,202,210,.75); 
+            z-index:8001; 
+            }
+            #status {
+            width:200px;
+            height:200px;
+            position:absolute;
+            left:50%; 
+            top:50%;  
+            background-repeat:no-repeat;
+            background-position:center;
+            margin:-100px 0 0 -100px; 
+            }
+            .progress{
+              padding: 0px;
+              margin: 0px;
+            }
+
+            /*Cores para a barra de rolagem da sidenav*/
+            #slide-out::-webkit-scrollbar-track {
+              background-color: #F4F4F4;
+            }
+            #slide-out::-webkit-scrollbar {
+                width: 6px;
+                background: #F4F4F4;
+            }
+            #slide-out::-webkit-scrollbar-thumb {
+                background: #888;
+            }
+         </style>
+         <script>
+            var leadsInSalesforce = new Map();
+            function getLead(place_id){
+             var retorno = leadsInSalesforce.get(place_id);
+             if(retorno == true)
+               return true;
+             else
+               return false;
+            }
+         </script> 
+         <script>
+         /*
+          
+           zoom:5,
+           panControl: true,
+           zoomControl: true,
+           scaleControl: true,
+           mapTypeControl:true,
+           streetViewControl:true,
+           overviewMapControl:true,
+           rotateControl:true
+    
+         */
+            var leadstoSalesforce = [];
+            
+            var contador = 1;
+            
+            var rad = 5000;
+            var map;
+            var infowindow;
+            var tipo;
+            var filtro = 'Construtora';
+            var markersArray = [];
+            var circleArray = [];
+            var pyrmont;
+            function initMap() {
+              pyrmont = {lat: -3.738851, lng: -38.503927};
+            
+              map = new google.maps.Map(document.getElementById('map'), {
+                center: pyrmont,
+                zoom: 16,
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                streetViewControl:false,
+                mapTypeControl:false,
+                styles:{
+                  featureType: "poi",
+                  elementType: "labels",
+                  stylers: [
+                    { visibility: "off" }
+                  ]
+                }
+              });
+              google.maps.event.addListener(map, 'click', function(event) {
+                 placeMarker(event.latLng, event.latLng.lat(), event.latLng.lng());
+              });
+              infowindow = new google.maps.InfoWindow();
+              var service = new google.maps.places.PlacesService(map);
+              service.nearbySearch({
+                location: pyrmont,
+                radius: rad,
+                keyword : filtro
+              }, callbackSalesforce);
+            
+            }
+
+            function callbackSalesforce(results, status){
+              var places_id = [];
+              for(var j =0; j < results.length; j++)
+                  places_id.push(results[j].place_id);
+              Places(places_id, results, status);
+            }
+            
+            function callback(results, status) {
+              console.log('callback');
+              if (status === google.maps.places.PlacesServiceStatus.OK) {
+
+                
+
+                
+                var results_restantes = [];
+
+                
+
+               var leads = document.getElementById('leads').innerHTML = "";
+               contador = 0;
+               leadstoSalesforce = [];
+                for (var i = 0; i < 10; i++) {
+                  createMarker(results[i]);
+                }
+
+                //deletelead();
+                setTimeout(function(){ 
+                  if(results.length > 10){
+                  document.querySelector("#leads > li:first-child").insertAdjacentHTML('beforeBegin','<li id="loading"><div class="progress"> <div class="indeterminate"></div></div></li>');
+                  for (var i= 10; i < results.length; i++){
+                    results_restantes.push(results[i]);
+                    setTimeout(function(){ callback2(results_restantes)}, 4500);
+                  }
+                }
+               }, 1000);
+              
+                
+              }
+            }
+
+            function callback2(results) {
+                for (var i = 0; i < results.length; i++) {
+                  createMarker(results[i]);
+                }
+                
+                $('#loading').fadeOut(1000);
+                //setTimeout( function(){ deletelead() }, 1000);
+            }
+            var markers = 0;
+            function placeMarker(location, latitude, longitude) {
+            
+              for(i =0; i < markersArray.length; i++ ){
+                markersArray[i].setMap(null);
+              }
+              for(i =0; i < circleArray.length; i++ ){
+                circleArray[i].setMap(null);
+              }
+                var marker = new google.maps.Marker({
+                    position: location, 
+                    map: map
+                });
+                markersArray.push(marker);
+
+                var circle = new google.maps.Circle({
+                  map: map,
+                  radius: rad,    // 10 miles in metres
+                  fillColor: '#21d2c4',
+                  strokeColor: 'transparent'
+                });
+                circle.bindTo('center', marker, 'position');
+
+               circleArray.push(circle);
+              pyrmont = {lat: latitude, lng: longitude};
+            
+              markers++;
+            
+              var service = new google.maps.places.PlacesService(map);
+            
+              service.nearbySearch({
+                location: pyrmont,
+                radius: rad,
+                keyword: filtro
+              }, callbackSalesforce);
+            }
+            
+            function createMarker(place) {
+              var placeLoc = place.geometry.location;
+              var marker = new google.maps.Marker({
+                map: map,
+                position: place.geometry.location,
+                animation: google.maps.Animation.DROP,
+                draggable: false,
+                title: place.name,
+                icon:{
+                  url: place.icon,
+                  scaledSize: new google.maps.Size(16, 16)
+                },
+                labelContent: place.Name
+              });
+            
+              google.maps.event.addListener(marker, 'click', function() {
+                infowindow.setContent(place.name);
+                infowindow.open(map, this);
+              });
+              markersArray.push(marker);
+             createDetail(place);
+            }
+            
+            function createDetail(place){
+            
+             var service = new google.maps.places.PlacesService(map);
+              service.getDetails({
+               placeId: place.place_id
+               }, function(place, status) {
+                 
+                 
+                 if (status === google.maps.places.PlacesServiceStatus.OK) {
+
+                   var leads = document.getElementById('leads');
+               
+                    var url; 
+                    if((place.photos != undefined) && (place.photos != null))
+                      url = place.photos[0].getUrl({'maxWidth':300, 'maxHeight':300});
+                    else
+                      url = place.icon;
+            
+                   var telefone;
+            
+                   if(place.formatted_phone_number != undefined)
+                     telefone = place.formatted_phone_number;
+                   else
+                     telefone = 'Não consta'
+            
+                   var lead_existente = getLead(place.place_id);
+            
+                   var leadcriado = '<div style=" width: 100%; position: absolute; height: 100%; background: rgba(0,0,0,.5); left: 0; top: 0; z-index: 999; "><p style=" text-align: center; color: white; margin-top: 10%;" class="">Lead Já criado </p></div>';
+            
+                   if(lead_existente){
+                    leads.insertAdjacentHTML('afterbegin','<li id="'+place.place_id+'" lang="'+contador+'" class="dismissable collection-item avatar">'+leadcriado+'<img src="'+url+'" class="circle"> <span class="title">'+place.name+'</span> <p>'+telefone+'<br>'+place.vicinity+'</p><i lang="'+place.place_id+'"  class="material-icons secondary-content" style="margin: 0 !important; cursor:pointer">remove_circle_outline</i></li>');
+                   }else{
+                     leads.insertAdjacentHTML('afterbegin','<li id="'+place.place_id+'" lang="'+contador+'" class="dismissable collection-item avatar"><img src="'+url+'" class="circle"> <span class="title">'+place.name+'</span> <p>'+telefone+'<br>'+place.vicinity+'</p><i lang="'+contador+'" onclick="$(this).closest( \'li\' ).remove(); leadstoSalesforce.splice(parseInt(this.lang, 10), 1); " lang="'+place.place_id+'"  class="material-icons secondary-content" style="margin: 0 !important; cursor:pointer">remove_circle_outline</i></li>');
+                     leadstoSalesforce.push(place);
+                     
+                   }
+                   contador++;
+               }
+             })
+            }
+            
+         </script>
+      </head>
+      <body>
+         <div id="preloader">
+            <div class="preloader-wrapper small active" id="status">
+               <div class="spinner-layer spinner" style="border-color: #252d2d">
+                  <div class="circle-clipper left">
+                     <div class="circle"></div>
+                  </div>
+                  <div class="gap-patch">
+                     <div class="circle"></div>
+                  </div>
+                  <div class="circle-clipper right">
+                     <div class="circle"></div>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <ul id="slide-out" class="side-nav">
+            <li class="blue" style="padding: 40px">
+               <div class="user-view">
+                  <div class="input-field col s12">
+                     <input type="text" id="autocomplete-input" class="autocomplete"/>
+                     <label for="autocomplete-input">Filtro</label>
+                  </div>
+                  <div class="background white">
+                  </div>
+               </div>
+            </li>
+            <li id="total">&emsp; Leads encontrados
+               <button class="btn-floating right btn-floating" onclick="$('#confirm').modal('open')" style="
+                  margin: 5px;"><i class="material-icons">create</i></button>
+            </li>
+            <li>
+               <ul class="collection" id="leads">
+                  <!-- Leads -->
+               </ul>
+            </li>
+         </ul>
+         <a href="javascript:void(0)" data-activates="slide-out" class="button-collapse btn absolute blue btn-floating pulse"><i class="material-icons">menu</i></a>
+         <div id="map"></div>
+         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAk7zZaAjbMkp-kHIzmHeKlJ7WKzg8l9SU&libraries=places&callback=initMap"></script>
+         <img src="{!$Resource.Logo}" class="logo"/>
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+         <script type="text/javascript">
+            $(window).on('load', function(){
+               $('#preloader').fadeOut(1000);
+            })
+            $('.button-collapse').sideNav({
+              menuWidth: 400,
+              edge: 'left', 
+              closeOnClick: true, 
+              draggable: true,
+              onOpen: btnopen,
+              onClose: btnclose
+            }
+            );
+            function btnopen(){
+             $('.button-collapse').css('transform','translateX(980%)');
+             //deletelead();
+            }
+            function btnclose(){
+             $('.button-collapse').css('transform','translateX(0%)');
+            }
+            
+            $(document).ready(function(){
+                $('.modal').modal();
+             $('#autocomplete-input').keypress(function(event){
+               if(event.keyCode == 13)
+               {
+                   filtro = this.value;
+                   var $toastContent = $('<span>Filtro '+'<b>'+filtro+'</b>'+' selecionado</span>');
+                   Materialize.toast($toastContent, 10000);
+            
+               }
+             })
+            })
+            
+            function deletelead(){
+             $('.secondary-content').click(function(){
+                 var id = (this.lang);
+                 var index = $('#'+id).attr('lang');
+                 leadstoSalesforce.splice(parseInt(index, 10), 1);
+                 $('#'+id).remove();
+                 $('#'+this.lang)
+             })
+            }
+            
+            function criarLeads(){
+            
+             ApexToJs();
+            }
+
+            function ApexToJs(){
+
+              if(leadstoSalesforce.length > 0){
+
+                var c_leads = [];
+
+                for(i=0;i < leadstoSalesforce.length; i++){
+
+                  var address = new Map();
+
+                  for(var j = 0; j < leadstoSalesforce[i].address_components.length; j++)
+                      address.set(leadstoSalesforce[i].address_components[j].types[0], leadstoSalesforce[i].address_components[j].short_name);
+
+                  var LeadPlace = {
+                      Street  : address.get('route')+ ', '+ address.get('street_number') + ' - ' + address.get('sublocality_level_1'),
+                      City : address.get('administrative_area_level_2'),
+                      State : address.get('administrative_area_level_1'),
+                      Country : address.get('country'),
+                      PostalCode  : address.get('postal_code'),
+                      Phone : leadstoSalesforce[i].formatted_phone_number == undefined ? '' : leadstoSalesforce[i].formatted_phone_number,
+                      LastName : leadstoSalesforce[i].name.length > 79 ? leadstoSalesforce[i].name.substring(0,79) : leadstoSalesforce[i].name,
+                      Website : leadstoSalesforce[i].website == undefined ? '' : leadstoSalesforce[i].website,
+                      Google_place_id__c : leadstoSalesforce[i].place_id,
+                      Company : leadstoSalesforce[i].name.length > 79 ? leadstoSalesforce[i].name.substring(0,79) : leadstoSalesforce[i].name
+                  };
+                  c_leads.push(LeadPlace);
+
+                }
+
+                for(var x = 0; x < c_leads.length; x++)
+                  create(c_leads[x]);
+
+                $('#leads > li').each(function(){
+                       this.insertAdjacentHTML('afterbegin', '<div style=" width: 100%; position: absolute; height: 100%; background: rgba(0,0,0,.5); left: 0; top: 0; z-index: 999; "><p style=" text-align: center; color: white; margin-top: 10%;" class="">Lead Já criado </p></div>')
+                });
+                
+            }else{
+              var $toastContent = $('<span>Nenhum lead criado</span>');
+                       Materialize.toast($toastContent, 3000);
+            }
+              leadstoSalesforce=[];
+            }
+
+            function create(obj){
+              var leadsToCreate = new RemoteObjectModel.Place();
+              leadsToCreate.create(
+                obj,
+                function(error, records, event){
+                  console.log(error);
+                  console.log(records);
+                  console.log(event);
+                  
+                }
+              );
+            }
+
+
+            function Places(places, a ,b){
+              console.log('places function');
+              console.log(places);
+              var lead = new RemoteObjectModel.Place();
+              lead.retrieve(
+                function(){
+                  return(
+                    {
+                      where: {
+                        Google_place_id__c: {
+                          in: places 
+                        }
+                    }
+                    }
+                  );
+                },
+                function(error, records, event) {
+                  if(records.length > 0){
+                    for(var i=0; i < records.length; i++)
+                      leadsInSalesforce.set( records[i]._props.Google_place_id__c , true);
+                  }
+                  callback(a,b);
+                }
+            );
+            }
+         </script>
+
+          <div id="confirm" class="modal" style="width: 45% !important">
+            <div class="modal-content">
+              <h4 class="flow-text">Deseja criar Leads?</h4>
+            </div>
+            <div class="modal-footer" style="border-top: solid 1px #e6e6e6;">
+              <a href="javascript:void(0)" class="modal-action waves-effect modal-close waves-green btn-flat" onclick="criarLeads()">Aceitar</a>
+              <a href="javascript:void(0)" class="modal-action modal-close waves-effect waves-red btn-flat">Cancelar</a>
+            </div>
+          </div>
+
+      </body>
+   </html>
+</apex:page>
